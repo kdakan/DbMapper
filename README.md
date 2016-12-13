@@ -24,14 +24,14 @@ It is a tool that frees the developer from writing the same database access code
 ## Mapping connections
 So lets start mapping. First we define our connections. The following code defines vendor information for our connections with names OracleTest and SqlServerTest. We supply here the standard db parameter prefix as ":" to use in our queries. We could use any special character here, as it will be internally replaced with : when runnuin a query on Oracle and replaced with @ for Sql Server connections.
 
-```
+```cs
 Connections 
   .Add(MyConnection.OracleTest, DBVendor.Oracle, ":") 
   .Add(MyConnection.SqlServerTest, DBVendor.Microsoft, ":");
 ```
 Note that for all string definitions (like connection, schema, table/column, sp names etc.), DBMapper api expects you to pass an Enum type for intellisense names without typing errors, and less typing. We have declared our connection names in the following enum.
 
-```
+```cs
 public enum MyConnection { 
   OracleTest, 
   SqlServerTest 
@@ -41,7 +41,7 @@ Also in the App.config file we supply our connection strings (connection strings
 
 So where do we map our connections and entities? We map our connections in the MapConnection method of a class implementing the IMapConnection interface. We map our entities in the MapEntity method of any number of classes implementing the IMapEntity interface. App.config has two settings for DLL paths, one for our IMapConnection implementing class, and another for our IMapEntity implementing classes.
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8" ?> 
 <configuration> 
   <connectionStrings> 
@@ -58,7 +58,7 @@ So where do we map our connections and entities? We map our connections in the M
 ## Mapping a basic class for querying
 Next we define our entity classes. Entity classes do not need any specific base class, and can have nested or inner classes, with mapped properties in nested or inner classses. Below are two example entity classes, Test and TestReport. Test is a table-entity with both table and query-mapped properties, and also non-mapped properties in its inner classes. TestReport is a query-only entity (called view-entity in this framework). Lets first see the basic TestReport entity:
 
-```
+```cs
 public class TestReport { 
   public string A { get; set; } 
   public string B { get; set; } 
@@ -66,7 +66,7 @@ public class TestReport {
 ```
 And we supply the connection name, trigger actions as C# delegates, property to column mapping, and sql select queries and its parameter names in the following mapping statement:
 
-```
+```cs
 ViewEntity<TestReport> 
   .Connection(CommonDefinitions.Connection) 
   .TriggerActions 
@@ -89,7 +89,7 @@ ViewEntity<TestReport>
 ## Entity with nested properties and ActiveRecord
 Here is a massive table-entity example with inner classes, table and view mapped columns, auto-set column value providers for primary key, timestamp and other columns, etc. Note that you don't have to provide all this information if you don't support both database vendors, or you suport both vendors throug a common subset of features. This example is massive because it is designed to demonstrate and test most features of DBMapper.
 
-```
+```cs
 public class Test : ActiveRecord { 
   public decimal Price { get; set; } 
   public int Quantity { get; set; } 
@@ -149,7 +149,7 @@ public enum TestEnum {
 ## Mapping a class for all CRUD operations and trigger actions
 Then we start mapping these classes and public properties to tables and queries, as follows (first we define a few function delegates to use in custom triggers or as auto-value providers):
 
-```
+```cs
 Func<object> userNameFunction = delegate() { return Environment.UserName; }; 
 Func<object> nowFunction = delegate() { return DateTime.Now; }; 
 Func<object> dbNowFunction = delegate() { return DB.CallFunction<DateTime>(
@@ -163,7 +163,7 @@ Func<object> newTestIdFunction = delegate() { return DB.CallFunction<int>(
 ```
 And here is the table-entity mappings:
 
-```
+```cs
 TableEntity<test /> 
   .Table(Table.TEST2, CommonDefinitions.Schema, CommonDefinitions.Connection, 
     CommonDefinitions.PrimaryKeyValueProvider, CommonDefinitions.TimestampValueProvider) 
@@ -261,7 +261,7 @@ TableEntity<test />
       );
 ```
 You can see that all db object name strings are provided by enums. I find this more manageable than spreading strings all around the code, and easier with less typing than declaring and initializing string constants.
-```
+```cs
 public enum ValueProvider { 
   App = 1, 
   AppFunctionDelegate = 2, 
@@ -291,35 +291,35 @@ Not every database vendor and every version of the same database support the sam
 ## CRUD (Create/Read/Update/Delete) statements
 An example select statement:
 
-```
+```cs
 IList<TestReport> testReportList = DB.Select<TestReport>(Query.SelectReport, 
   new InputParameter("a", "x"), 
   new InputParameter("aaa", "x"), new InputParameter("list", list));
 ```
 Or something like this, if you use ActiveRecord as a base class:
-```
+```cs
 public static Test SelectByTestId(int testId) {
     return Test.SelectFirst<Test>(Query.SelectByTestId, new InputParameter("testId", testId)); 
 }
 ```
 An example insert statement:
-```
+```cs
 DB.Insert(test); 
 ```
 Or if you use ActiveRecord as a base class:
-```
+```cs
 test.Insert(); 
 ```
 Update: 
-```
+```cs
 DB.Update(test, Query.SelectByTestId); 
 ```
 Or ActiveRecord version:
-```
+```cs
 test.Update(Query.SelectByTestId); 
 ```
 Delete is similar. To call a db function or procedure (last one uses output parameters to return values);
-```
+```cs
 DateTime dbNow = DB.CallFunction<DateTime>(
     CommonDefinitions.Connection, CommonDefinitions.Schema, DBFunction.FGET_DATE); 
 DB.CallProcedure(CommonDefinitions.Connection, CommonDefinitions.Schema, StoredProcedure.PTEST); 
@@ -329,7 +329,7 @@ DB.CallProcedure(CommonDefinitions.Connection, CommonDefinitions.Schema,
           StoredProcedure.PTEST1, outputParameters, new InputParameter("P_NIN", 123)); 
 ```
 Only the table-columns are inserted and updated, not the view-columns. Only the columns that were queried should be updated for data consistency, so Update statement updates only the table-columns that are in the given query. Queries only fill the properties matching the table-column or view-column mappings and query column names. If there is a column in the query that does not exist in table-colum or view-column mappings, then naturally it does not fill ant property. To use the example test project, you will need to have access to Sql Server and Oracle databases, and the following database objects: SQL Server (two versions of the same table, with and without auto-increment (identity) and with different timestamp types (timestamp/rowversion with counter semantics vs binary for date/time semantics like on Oracle):
-```
+```sql
 CREATE TABLE [dbo].[TEST]( 
 [TEST_ID] [numeric](9, 0) IDENTITY(1,1) NOT NULL, 
 [NAME] [nchar](50) NULL, 
@@ -353,7 +353,7 @@ CREATE NONCLUSTERED INDEX [I_TEST2_TEST_ID] ON [dbo].[TEST2]
 )
 ```
 Also the DUAL table is used for identical select statements for both Sql Server and Oracle in our queries:
-```
+```sql
 CREATE TABLE [dbo].[DUAL]( 
 [DUMMY] [nvarchar](1) NULL 
 ) ON [PRIMARY] 
@@ -385,7 +385,7 @@ RETURN isnull(@i, 0) + 1;
 END
 ```
 For Oracle:
-```
+```sql
 create table test2 ( 
 TEST_ID NUMBER(9) NOT NULL, 
 NAME VARCHAR2(50), 
@@ -418,11 +418,11 @@ begin null; p_sout := 'sss'||to_char(p_nin); end;
 CREATE INDEX I_TEST2_TEST_ID ON TEST2 (TEST_ID);
 ```
 For both Oracle and Sql Server 2012 (only version 2012 has sequences)
-```
+```sql
 create sequence s_test; 
 ```
 Schema names I used for my test code are leas for Oracle, and dbo for Sql Server. You can create these objects and run the code to test DBMapper. Important note: Multi-thread (concurrent command) tests for update and logical delete are done using the same record. Normally DBMapper would throw "Record changed, please requery before saving" exception for data consistency, but to carry out tests more realistically, I have commented out the lines that throw this exception for this test. The method is ExecuteNonQuery on ConnectionMapping class:
-```
+```cs
 //if (rowCount == 0 && checkRowCount) 
 // throw new RecordNotFoundOrRecordHasBeenChangedException(
 //  "Record not found or record has been updated since your last query. " + 
