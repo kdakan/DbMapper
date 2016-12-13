@@ -2,7 +2,7 @@
 A fast mini ORM for .Net with native support for Oracle and Sql Server.
 
 ## Introduction
-Hi, this article introduces DBMapper, a new ORM tool I have designed and developed. It's written on C#, and tested on Oracle 10g + and Sql Server 2005 +
+Hi, this article introduces DBMapper, a new ORM tool I have designed and developed. It's coded in C#, and has been tested on Oracle 10g and up, and Sql Server 2005 and up
 
 ## Main featues of DBMapper:
 
