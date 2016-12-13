@@ -24,7 +24,7 @@ It is a tool that frees the developer from writing the same database access code
 ## Mapping connections
 So lets start mapping. First we define our connections. The following code defines vendor information for our connections with names OracleTest and SqlServerTest. We supply here the standard db parameter prefix as ":" to use in our queries. We could use any special character here, as it will be internally replaced with : when runnuin a query on Oracle and replaced with @ for Sql Server connections.
 
-```csharp
+```
 Connections 
   .Add(MyConnection.OracleTest, DBVendor.Oracle, ":") 
   .Add(MyConnection.SqlServerTest, DBVendor.Microsoft, ":");
