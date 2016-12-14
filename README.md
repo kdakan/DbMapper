@@ -2,7 +2,7 @@
 A fast mini ORM for .Net with native support for Oracle and Sql Server.
 
 ## Introduction
-Hi, this article introduces DBMapper, a new ORM tool I have designed and developed. It's coded in C#, and has been tested on Oracle 10g and up, and Sql Server 2005 and up
+Hi, this article introduces DBMapper, a new ORM tool I have designed and developed. It's been coded in C#, and tested on Oracle 10g and up, and Sql Server 2005 and up
 
 ## Main featues of DBMapper:
 
@@ -18,8 +18,11 @@ Hi, this article introduces DBMapper, a new ORM tool I have designed and develop
 * High performance, efficient algorithms, use of internal caching and Code.Emit native code generation for improved performance (does not use the slow Reflection api)
 * It is open source, has as a clean and expandable code architecture for extensions or modifications, if necessary.
 
-## So what is an ORM? 
-It is a tool that frees the developer from writing the same database access codes again and again. With an ORM, you can map classes to tables/views/queries and easily fill your entity collection from db objects, and save them back to database tables. You can also call stored procedures and db functions using a syntax like calling native .Net methods.
+## So what is a mini ORM? 
+An ORM is a tool that maps business entity classes onto database tables and lets you query them easily, so the business code can be coded without thinkin much about persistence, and also can be easily unit tested. 
+* A data access layer is a library that frees the developer from writing the same database access codes again and again. 
+* And a mini ORM is somewhere between a full ORM and a data access library, much faster than ORM's like NHibernate or Entity Framework, with a small API and no steep learning curve. 
+* Using DbMapper, you can map classes to tables/views/queries and easily fill your entity collection from db objects, and save them back to database tables. You can also call stored procedures and db functions using a syntax like calling native .Net methods.
 
 ## Mapping connections
 So lets start mapping. First we define our connections. The following code defines vendor information for our connections with names OracleTest and SqlServerTest. We supply here the standard db parameter prefix as ":" to use in our queries. We could use any special character here, as it will be internally replaced with : when runnuin a query on Oracle and replaced with @ for Sql Server connections.
@@ -330,7 +333,7 @@ DB.CallProcedure(CommonDefinitions.Connection, CommonDefinitions.Schema,
 ```
 Only the table-columns are inserted and updated, not the view-columns. Only the columns that were queried should be updated for data consistency, so Update statement updates only the table-columns that are in the given query. Queries only fill the properties matching the table-column or view-column mappings and query column names. If there is a column in the query that does not exist in table-colum or view-column mappings, then naturally it does not fill ant property. To use the example test project, you will need to have access to Sql Server and Oracle databases, and the following database objects: SQL Server (two versions of the same table, with and without auto-increment (identity) and with different timestamp types (timestamp/rowversion with counter semantics vs binary for date/time semantics like on Oracle):
 ```sql
-CREATE TABLE [dbo].[TEST]( 
+CREATE TABLE [dbo].[TEST2]( 
 [TEST_ID] [numeric](9, 0) IDENTITY(1,1) NOT NULL, 
 [NAME] [nchar](50) NULL, 
 [TEXT] [text] NULL, 
@@ -417,36 +420,39 @@ create procedure ptest1(p_nin number, p_sout out varchar2) as
 begin null; p_sout := 'sss'||to_char(p_nin); end; 
 CREATE INDEX I_TEST2_TEST_ID ON TEST2 (TEST_ID);
 ```
-For both Oracle and Sql Server 2012 (only version 2012 has sequences)
+For both Oracle and Sql Server 2012 and up:
 ```sql
 create sequence s_test; 
 ```
-Schema names I used for my test code are leas for Oracle, and dbo for Sql Server. You can create these objects and run the code to test DBMapper. Important note: Multi-thread (concurrent command) tests for update and logical delete are done using the same record. Normally DBMapper would throw "Record changed, please requery before saving" exception for data consistency, but to carry out tests more realistically, I have commented out the lines that throw this exception for this test. The method is ExecuteNonQuery on ConnectionMapping class:
+Schema names I used for my test code are leas for Oracle, and dbo for Sql Server. You can create these objects and run the code to test DbMapper. Important note: Multi-thread (concurrent command) tests for update and logical delete are done using the same record. Normally DbMapper would throw "Record changed, please requery before saving" exception for data consistency, but to carry out tests more realistically, I have commented out the lines that throw this exception for this test. The method is ExecuteNonQuery on ConnectionMapping class:
 ```cs
 //if (rowCount == 0 && checkRowCount) 
 // throw new RecordNotFoundOrRecordHasBeenChangedException(
 //  "Record not found or record has been updated since your last query. " + 
 //  "Please re-query this record and try again.");
 ```
-Before using it for real-world production systems, you SHOULD remove the comment on this if block and throw this exception! And one last thing, DBMapper uses version 2.112.2.0 of Oracle Data Access Components for .NET, remember to install ODAC on your machine or you will not be able to build or use DBMApper.
+Before using it for real-world production systems, you SHOULD remove the comment on this if block and throw this exception! And one last thing, DbMapper uses version 2.112 2.0 of Oracle Data Access Components for .NET, remember to install ODAC on your machine or you will not be able to build or use DbMapper.
 ## Points of Interest
-I learned a lot while writing this ORM tool. I became more proficient in T-SQL, profiling, refactoring, object-oriented design and patterns. This project first started as a very basic prototype for testing dynamic property getter/setter code I found on the web, and grew into a multi-vendor ORM with many features, mostly in my spare time in these last couple of months. Once it grew into a procedural mess, then I refactored and redesigned it using template methods and abstract factory patterns, from then on it became manageable and less-buggy. Up to last couple of weeks, it wasn't tested in multi-thread (concurrent user) mode, and was generating internal caches lazily (on the first need for that cache, but not before). However, this meant I had to use lots and lots of reader/writer locks on these caches for too long intervals, and this caused a great performance decrease when used in concurrent mode. Then I transferred the internal cache/command/Code Emit generators to do all work at the start-up just after the mapping finishes, then I didn't need to lock anything and then came the concurrent performance boost. In its present form, hundreds of concurrent commands perform as fast as a single command execution.
+I learned a lot while writing this ORM tool. I became more proficient in T-SQL, profiling, refactoring, object-oriented design and patterns. This project first started as a very basic prototype for testing dynamic property getters/setters, and grew into a multi-vendor ORM with many features, mostly in my spare time in April-May 2013. Once it grew into a procedural mess, then I refactored and redesigned it using template methods and abstract factory patterns, from then on it became manageable and less-buggy. Up to last couple of weeks, it wasn't tested in multi-thread (concurrent user) mode, and was generating internal caches lazily (on the first need for that cache, but not before). However, this meant I had to use lots and lots of reader/writer locks on these caches for too long intervals, and this caused a great performance decrease when used in concurrent mode. Then I transferred the internal cache/command/Code Emit generators to do all work at the start-up just after the mapping finishes, then I didn't need to lock anything and then came the concurrent performance boost. In its present form, hundreds of concurrent commands perform as fast as a single command execution.
+There is still something that might bother people writing unit tests, the static mapping and query/command interface, but I will be removing static objects soon and also removing the caching feature because there are all kinds of caching technology alternatives for the developer, for example a busy e-commerce project might use distributed caching or some intranet program might use MemoryCache for their needs.
 
 ## Organization of the source code
-The provided DBMapper.zip file contains the source code for the entire DBMapper engine and my test projects that runs benchmarks and demonstrates the usage.
-DBMapper project contains all classes for DBMapper engine and its public mapping and command api.
-Fluent.cs contains the fluent mapping api, Mapper.cs contains the private inner mapping api called from fluent interface.
-Mappings.cs contain the mapping classes, dictionaries and caches that are used at runtime command execution, and also contains the public api for changing mappings at runtime.
-DB.cs contains the public CRUD/SP Call command api.
-Command.cs has the template command classes executed on CRUD and SP calls.
-CommandFactory.cs has the vendor-specific override command classes for some CRUD commands.
-CommandGenerator.cs resembles Command.cs, but contains only classes for generating the necessary information/caches/Code.Emit native code that are used by command classes.
-CommandGeneratorFactory.cs classes resemble CommandFactory.cs, and again generate info/caches/Code.Emit native code for vendor specific commands.
-ActiveRecord.cs is a basic wrapper on the CRUD command api, for use as a base class if you want to use it.
-MultiKeyDictionary.cs contains Dictionary classes with multiple key implementation.
-Entity project contains the entity classes used for testing, and also the mapping class for these entities, implementing IMapEntity interface.
-Business project contains classes using these test entity classes for CRUD operations, and calling SP's.
-Finally, Test project loads IMApConenction and IMApEntity implementing classes, runs MapConnection and MapEntity methods on these classes, then runs GenerateCommands method to prepare the system before its use. Finally, it runs tests that are on the business project.
-The tests demonstrate using the public api for running CRUD db commands on entity objects, calling sp's, and then runtime changing schema, connection and DB-vendor for an entity mapping, generating commands for the affected entity, and running benchmarks and the same tests again.. No rebuild or restart necessary for even switching DB vendors, Wow!!!
+* DbMapper folder contains the source code for the entire DbMapper engine and my test projects that runs benchmarks and demonstrates the usage.
+* DbMapper project contains all classes for DbMapper engine and its public mapping and command api.
+* Fluent.cs contains the fluent mapping api, Mapper.cs contains the private inner mapping api called from fluent interface.
+* Mappings.cs contain the mapping classes, dictionaries and caches that are used at runtime command execution, and also contains the public api for changing mappings at runtime.
+* DB.cs contains the public CRUD/SP Call command api.
+* Command.cs has the template command classes executed on CRUD and SP calls.
+* CommandFactory.cs has the vendor-specific override command classes for some CRUD commands.
+* CommandGenerator.cs resembles Command.cs, but contains only classes for generating the necessary information/caches/Code.Emit native code that are used by command classes.
+* CommandGeneratorFactory.cs classes resemble CommandFactory.cs, and again generate info/caches/Code.Emit native code for vendor specific commands.
+* ActiveRecord.cs is a basic wrapper on the CRUD command api, for use as a base class if you want to use it.
+* MultiKeyDictionary.cs contains Dictionary classes with multiple key implementation.
+* Entity project contains the entity classes used for testing, and also the mapping class for these entities, implementing IMapEntity interface.
+* Business project contains classes using these test entity classes for CRUD operations, and calling SP's.
+* Finally, Test project loads IMApConenction and IMApEntity implementing classes, runs MapConnection and MapEntity methods on these classes, then runs GenerateCommands method to prepare the system before its use. Finally, it runs tests that are on the business project.
+* The tests demonstrate using the public api for running CRUD db commands on entity objects, calling sp's, and then runtime changing schema, connection and DB-vendor for an entity mapping, generating commands for the affected entity, and running benchmarks and the same tests again.. No rebuild or restart necessary for even switching DB vendors, Wow!!!
 ## History
-This is a full working beta version of DBMapper, which dates back to April 2013. It has not been tested by lots of users. I have tested it under simulated heavy load (hundreds of concurrent db commands/users) and it performs exceptionally well. I will be glad to provide help for people who want to use and test it. The source code provided also comes with the test project that I used for my tests. If you have any questions or suggestions, or to report a bug, please email me at kdakan@yahoo.com.
+* This is a full working beta version of DbMapper, as of May 2013. It has been tested it under simulated heavy load (hundreds of concurrent db commands/users) and it performs exceptionally well. 
+* I will be glad to provide help for people who want to use and test it. The source code provided also comes with the test project that I used for my tests.
+* If you have any questions or suggestions, or to report a bug, please email me at kdakan@yahoo.com.
